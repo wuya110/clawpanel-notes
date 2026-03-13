@@ -22,25 +22,34 @@ WorkingDirectory=/opt/clawpanel
 ExecStart=/usr/bin/node scripts/serve.js --port 1420
 ```
 
-## SSH 下一次稳妥升级（推荐）
+## SSH 下一次稳妥升级口令（最终版）
 ```bash
 curl -fsSL https://raw.githubusercontent.com/qingchencloud/clawpanel/main/scripts/linux-deploy.sh | bash && \
 systemctl daemon-reload && \
 systemctl restart clawpanel && \
-systemctl status clawpanel --no-pager -l
+echo '--- clawpanel status ---' && \
+systemctl status clawpanel --no-pager -l | sed -n '1,20p' && \
+echo '--- clawpanel pid/time ---' && \
+systemctl show clawpanel -p MainPID -p ExecMainStartTimestamp -p ActiveEnterTimestamp && \
+echo '--- port 1420 ---' && \
+ss -lntp | grep 1420
 ```
 
 说明：
 - 前半段负责拉新文件、安装依赖、重建前端
 - `systemctl daemon-reload` 确保 systemd 重新加载最新服务文件
 - `systemctl restart clawpanel` 确保运行中的旧进程切到新版本
-- 最后一条直接回显服务状态，SSH 下能立刻看结果
+- 后半段直接打印状态、PID、启动时间、1420 端口监听结果
+- SSH 执行完后，能立刻判断是不是已经真正切换成功
 
 ## 分步版升级流程
 ```bash
 curl -fsSL https://raw.githubusercontent.com/qingchencloud/clawpanel/main/scripts/linux-deploy.sh | bash
 systemctl daemon-reload
 systemctl restart clawpanel
+systemctl status clawpanel --no-pager -l | sed -n '1,20p'
+systemctl show clawpanel -p MainPID -p ExecMainStartTimestamp -p ActiveEnterTimestamp
+ss -lntp | grep 1420
 journalctl -u clawpanel -n 80 --no-pager
 ```
 
