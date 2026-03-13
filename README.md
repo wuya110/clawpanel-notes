@@ -35,12 +35,25 @@ echo '--- port 1420 ---' && \
 ss -lntp | grep 1420
 ```
 
-说明：
-- 前半段负责拉新文件、安装依赖、重建前端
-- `systemctl daemon-reload` 确保 systemd 重新加载最新服务文件
-- `systemctl restart clawpanel` 确保运行中的旧进程切到新版本
-- 后半段直接打印状态、PID、启动时间、1420 端口监听结果
-- SSH 执行完后，能立刻判断是不是已经真正切换成功
+## 一键回滚到最近备份
+```bash
+LAST_BAK=$(find /opt/clawpanel-backups -maxdepth 2 -type d -name 'clawpanel.old' | sort | tail -n 1) && \
+[ -n "$LAST_BAK" ] && \
+cp -a /etc/systemd/system/clawpanel.service "/etc/systemd/system/clawpanel.service.rollback_$(date -u +%Y%m%dT%H%M%SZ)" && \
+rm -rf /opt/clawpanel && \
+cp -a "$LAST_BAK" /opt/clawpanel && \
+if [ -f /opt/clawpanel-backups/$(basename "$(dirname "$LAST_BAK")")/clawpanel.service ]; then cp -f /opt/clawpanel-backups/$(basename "$(dirname "$LAST_BAK")")/clawpanel.service /etc/systemd/system/clawpanel.service; fi && \
+systemctl daemon-reload && \
+systemctl restart clawpanel && \
+echo '--- rollback source ---' && \
+echo "$LAST_BAK" && \
+echo '--- clawpanel status ---' && \
+systemctl status clawpanel --no-pager -l | sed -n '1,20p' && \
+echo '--- clawpanel pid/time ---' && \
+systemctl show clawpanel -p MainPID -p ExecMainStartTimestamp -p ActiveEnterTimestamp && \
+echo '--- port 1420 ---' && \
+ss -lntp | grep 1420
+```
 
 ## 分步版升级流程
 ```bash
@@ -68,3 +81,4 @@ curl -I http://127.0.0.1:1420
   - `systemctl daemon-reload`
   - `systemctl restart clawpanel`
 - 不要只跑官方脚本后就结束
+- 回滚口令会优先回滚到 `/opt/clawpanel-backups` 里最近一份 `clawpanel.old`
