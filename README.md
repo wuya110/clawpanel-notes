@@ -19,22 +19,29 @@
 ## 当前服务启动方式
 ```ini
 WorkingDirectory=/opt/clawpanel
-ExecStart=/usr/bin/node /opt/clawpanel/scripts/serve.js --port 1420
+ExecStart=/usr/bin/node scripts/serve.js --port 1420
 ```
 
-## SSH 下一次一键升级
-### 方案 1：官方一键升级（推荐）
+## SSH 下一次稳妥升级（推荐）
+```bash
+curl -fsSL https://raw.githubusercontent.com/qingchencloud/clawpanel/main/scripts/linux-deploy.sh | bash && \
+systemctl daemon-reload && \
+systemctl restart clawpanel && \
+systemctl status clawpanel --no-pager -l
+```
+
+说明：
+- 前半段负责拉新文件、安装依赖、重建前端
+- `systemctl daemon-reload` 确保 systemd 重新加载最新服务文件
+- `systemctl restart clawpanel` 确保运行中的旧进程切到新版本
+- 最后一条直接回显服务状态，SSH 下能立刻看结果
+
+## 分步版升级流程
 ```bash
 curl -fsSL https://raw.githubusercontent.com/qingchencloud/clawpanel/main/scripts/linux-deploy.sh | bash
-```
-说明：
-- 脚本会检测已有 `/opt/clawpanel`
-- 已存在时会进入目录执行依赖安装与构建
-- 会保持 `clawpanel.service` 方式运行
-
-### 方案 2：手动升级
-```bash
-cd /opt/clawpanel && npm install --registry https://registry.npmmirror.com && npm run build && systemctl restart clawpanel
+systemctl daemon-reload
+systemctl restart clawpanel
+journalctl -u clawpanel -n 80 --no-pager
 ```
 
 ## 常用排查命令
@@ -46,5 +53,9 @@ curl -I http://127.0.0.1:1420
 ```
 
 ## 备注
-当前本机安装不是标准 git 工作区，程序目录下未检测到可直接 `git pull` 的远端配置。
-因此后续升级优先使用官方 `linux-deploy.sh` 一键脚本。
+- 当前本机安装目录是 `/opt/clawpanel`
+- 本机此前出现过“文件已更新，但服务未切到新进程”的情况
+- 因此以后升级命令必须追加：
+  - `systemctl daemon-reload`
+  - `systemctl restart clawpanel`
+- 不要只跑官方脚本后就结束
